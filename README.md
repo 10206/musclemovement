@@ -93,9 +93,10 @@ npm run build:anatomy   # 소스 받기 → 리깅/병합 → 압축 → 검증
 |---|---|---|
 | fetch | `tools/fetch-source.sh` | 원본 해부/골격 메시를 `.artifacts/`로 (커밋 안 함, ~35MB) |
 | build | `tools/build-anatomy.mjs` | 좌표계 변환 → 실제 뼈에서 관절 위치 산출 → 자동 웨이팅 → 병합 → GLB + `src/anatomy/rigRest.ts` |
-| compress | `tools/compress-anatomy.mjs` | EXT_meshopt_compression (28.8MB → 9.6MB) |
+| compress | `tools/compress-anatomy.mjs` | EXT_meshopt_compression (30MB → 9.8MB) |
 | verify | `tools/verify-anatomy.mjs` | 스킨/속성/id 불변식 검사 |
 | calibrate | `tools/calibrate-joints.mjs` | 관절 회전축·부호 실측 (`src/anatomy/joints.ts` 갱신용) |
+| stretch | `tools/measure-stretch.mjs` | 동작별 근육 늘어남 실측 — 리깅이 현실적인지 판정하는 수치 |
 
 리깅 방식과 그게 왜 몇 달이 아니라 하루로 끝나는지는
 [`ARCHITECTURE.md`](./ARCHITECTURE.md) §8 참고.

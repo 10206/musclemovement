@@ -216,11 +216,52 @@ function blendAxis(jb, A, B) {
 //   the humerus, and the belly never does.
 const TORSO_BONES = new Set(['hips', 'spine', 'chest', 'neck', 'shoulder_L', 'shoulder_R'])
 
-/** How near a limb bone a vertex must be to follow it fully, and how far to
- * ignore it entirely. Between the two it blends, which is what lets pec major
- * stretch from a fixed sternum to a moving humerus. */
-const NEAR_FULL = 0.025
-const NEAR_NONE = 0.1
+// ---------------------------------------------------------------------------
+// Why torso->limb muscles get a PIVOT rule and not a proximity blend
+// ---------------------------------------------------------------------------
+// Linear blend skinning cannot represent a partial rotation. A vertex weighted
+// 0.5 between a still bone and one rotated 120 degrees does not end up rotated
+// 60 — it lands on the CHORD between the two positions, collapsing toward the
+// joint. So any vertex with an intermediate weight is displaced, and the
+// displacement grows with its distance from the joint.
+//
+// Both obvious knobs fail, and they fail in opposite directions — measured
+// with tools/measure-stretch.mjs on latissimus dorsi at full abduction:
+//
+//   wide blend band  -> a broad membrane, 6.99x stretch
+//   narrow band      -> a sharp tear: neighbours 1cm apart in rest end up
+//                       47cm apart posed. 13.12x. WORSE.
+//
+// There is no band width that works, because the problem isn't the width — it's
+// that the transition sits 10-15cm out from the shoulder, where rotating throws
+// it a long way. The only place a transition is harmless is AT the joint, where
+// rotation barely moves anything.
+//
+// So don't blend across the muscle at all. Ask instead where the muscle's BODY
+// lies, and let it ride that bone almost rigidly:
+//
+//   body on the limb  (deltoid wraps the humerus)  -> rigid to the limb. Its
+//     origin on the girdle is ~2cm from the pivot, so carrying it along is a
+//     ~4cm error and no membrane at all.
+//   body on the torso (lat runs down the back)     -> stays on the torso; only
+//     the tendon, which attaches within a few cm of the pivot, follows the
+//     limb. The blend is confined to that radius, where it costs almost
+//     nothing.
+//
+// Which case a muscle is in is not a judgement call — it's where its centroid
+// sits, so it's computed, not declared.
+
+/** Distance from the joint centre within which a torso-anchored muscle's
+ * tendon fully follows the limb, and beyond which it fully ignores it. Kept
+ * tight: this whole band must stay close enough to the pivot that rotating it
+ * doesn't visibly displace anything. */
+const PIVOT_FULL = 0.045
+const PIVOT_NONE = 0.11
+
+/** How close a muscle's centroid must sit to a limb bone to count as
+ * wrapped around it (deltoid ~4cm) rather than merely reaching toward it
+ * from the torso (pectoralis major's sternal head ~9cm). */
+const LIMB_WRAP_RADIUS = 0.08
 
 /** The line segment a bone physically occupies. */
 function boneSegment(name) {
@@ -252,28 +293,62 @@ function segmentPointDistance(p, [a, b]) {
   return dist(p, [a[0] + ab[0] * t, a[1] + ab[1] * t, a[2] + ab[2] * t])
 }
 
-/** Weights for one vertex under a rig rule. Returns [[boneName, weight], ...]. */
-function weightsFor(rule, X, v) {
-  if (rule.rigid) return [[expandSide(rule.rigid, X), 1]]
-  const A = expandSide(rule.span[0], X)
-  const B = expandSide(rule.span[1], X)
-
-  let wB
-  // NEAR only for torso -> LIMB. A torso-to-torso span (the abdominals, the
-  // erector spinae) is collinear up the trunk, so it wants ALONG just like a
-  // limb does — NEAR would strand the lumbar end 0.3m from the bone it follows.
-  if (TORSO_BONES.has(A) && !TORSO_BONES.has(B)) {
-    // NEAR: follow the limb only as far as you actually reach it.
-    wB = 1 - smoothstep(NEAR_FULL, NEAR_NONE, segmentPointDistance(v, boneSegment(B)))
-  } else {
-    // ALONG: follow the distal bone once you're past the joint.
-    const jb = jointBone(rule.joint, X)
-    wB = smoothstep(-JOINT_BLEND, JOINT_BLEND, dot(sub(v, pos[jb]), blendAxis(jb, A, B)))
-  }
-
+const split = (A, B, wB) => {
   if (wB <= 0.001) return [[A, 1]]
   if (wB >= 0.999) return [[B, 1]]
   return [[A, 1 - wB], [B, wB]]
+}
+
+function centroidOfMeshes(meshes) {
+  const c = [0, 0, 0]
+  let n = 0
+  for (const m of meshes) {
+    for (let i = 0; i < m.position.length; i += 3) {
+      c[0] += m.position[i]; c[1] += m.position[i + 1]; c[2] += m.position[i + 2]; n++
+    }
+  }
+  return c.map((v) => v / n)
+}
+
+/**
+ * Build the per-vertex weight function for one muscle.
+ *
+ * Takes the muscle's meshes, not just its rule, because the choice between
+ * "rides the limb" and "stays on the torso" is decided once from where the
+ * muscle's body actually is — see the PIVOT_FULL comment above.
+ */
+function makeWeightFn(rule, X, meshes) {
+  if (rule.rigid) {
+    const b = expandSide(rule.rigid, X)
+    return () => [[b, 1]]
+  }
+  const A = expandSide(rule.span[0], X)
+  const B = expandSide(rule.span[1], X)
+  const jb = jointBone(rule.joint, X)
+
+  // A torso-to-torso span (abdominals, erector spinae) is collinear up the
+  // trunk, so it wants ALONG just like a limb does.
+  if (TORSO_BONES.has(A) && !TORSO_BONES.has(B)) {
+    // "Is the body wrapped around the limb bone?" — NOT "is it nearer the limb
+    // than the torso". The torso bones are thin axial lines down the spine
+    // while the actual ribcage is 20cm wide, so distance-to-torso is
+    // systematically overstated for anything on the chest wall: it ruled that
+    // pectoralis major's sternal head lives on the humerus, bound the whole
+    // sheet to the arm, and tore it off the sternum (0.21m from the bone it
+    // followed, where the humerus itself only reaches 0.04m).
+    const c = centroidOfMeshes(meshes)
+    const bodyOnLimb = segmentPointDistance(c, boneSegment(B)) < LIMB_WRAP_RADIUS
+    // Rigid to the limb: 1.0x stretch by construction. The origin it drags
+    // along sits at the pivot, so it barely moves.
+    if (bodyOnLimb) return () => [[B, 1]]
+    // Body on the torso: stay put, and let only the tendon — everything within
+    // a few cm of the joint centre — follow the limb.
+    return (v) => split(A, B, 1 - smoothstep(PIVOT_FULL, PIVOT_NONE, dist(v, pos[jb])))
+  }
+
+  // ALONG: follow the distal bone once you're past the joint.
+  const axis = blendAxis(jb, A, B)
+  return (v) => split(A, B, smoothstep(-JOINT_BLEND, JOINT_BLEND, dot(sub(v, pos[jb]), axis)))
 }
 
 // ---------------------------------------------------------------------------
@@ -382,7 +457,7 @@ for (const muscle of MUSCLES) {
     meshes,
     // For a 'C' muscle the span bones are centre bones anyway (hips/chest), so
     // the side used to expand the rule is irrelevant.
-    weights: (v) => weightsFor(spec.rig, rigSide, v),
+    weights: makeWeightFn(spec.rig, rigSide, meshes),
   })
 }
 if (missing.length) {
@@ -418,7 +493,7 @@ for (const mesh of anatomy) {
   ctxBefore += mesh.index.length / 3
   const simplified = simplifyMesh(mesh, group.maxTris)
   ctxAfter += simplified.index.length / 3
-  contextEntries.push({ id: 0, meshes: [simplified], weights: (v) => weightsFor(group.rig, X, v) })
+  contextEntries.push({ id: 0, meshes: [simplified], weights: makeWeightFn(group.rig, X, [simplified]) })
 }
 console.log(`[context] ${contextEntries.length} meshes kept, ${ctxSkipped} deep/invisible skipped, ${ctxUnclaimed} unclaimed`)
 console.log(`[context] simplified ${Math.round(ctxBefore).toLocaleString()} -> ${Math.round(ctxAfter).toLocaleString()} tris`)

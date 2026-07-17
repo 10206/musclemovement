@@ -9,10 +9,11 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "anatomy:fetch": "tools/fetch-source.sh",
-    "anatomy:build": "node tools/build-anatomy.mjs .artifacts/anatomy-src && node tools/compress-anatomy.mjs && node tools/verify-anatomy.mjs",
-    "anatomy:verify": "node tools/verify-anatomy.mjs",
+    "anatomy:build": "node tools/build-anatomy.mjs .artifacts/anatomy-src && node tools/compress-anatomy.mjs && npm run anatomy:verify && npm run anatomy:stretch",
+    "anatomy:verify": "node --import ./tools/lib/register-ts.mjs tools/verify-anatomy.mjs",
     "anatomy:calibrate": "node tools/calibrate-joints.mjs",
-    "build:anatomy": "npm run anatomy:fetch && npm run anatomy:build"
+    "build:anatomy": "npm run anatomy:fetch && npm run anatomy:build",
+    "anatomy:stretch": "node --import ./tools/lib/register-ts.mjs tools/measure-stretch.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

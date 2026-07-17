@@ -73,6 +73,16 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'pectoralis_major_clavicular', role: 'prime' },
       { muscle: 'coracobrachialis', role: 'synergist' },
       { muscle: 'biceps_brachii', role: 'synergist' },
+      // The glenohumeral joint only supplies ~120deg (see joints.ts); the rest
+      // of the arc is the scapula rotating upward, and these are what rotate
+      // it. Listed for abduction from the start — omitting them here was an
+      // oversight, the shoulder doesn't flex overhead without them either.
+      { muscle: 'serratus_anterior', role: 'synergist' },
+      { muscle: 'trapezius', role: 'synergist' },
+      // Rotator cuff: holds the humeral head down and in the socket so the
+      // deltoid's pull becomes rotation instead of just shoving the head up.
+      { muscle: 'subscapularis', role: 'synergist' },
+      { muscle: 'infraspinatus', role: 'synergist' },
       { muscle: 'latissimus_dorsi', role: 'antagonist' },
       { muscle: 'teres_major', role: 'antagonist' },
       { muscle: 'deltoid_posterior', role: 'antagonist' },
@@ -94,6 +104,11 @@ export const MOVEMENTS: readonly MovementDef[] = [
       // what permits abduction past ~90deg at all.
       { muscle: 'serratus_anterior', role: 'synergist' },
       { muscle: 'trapezius', role: 'synergist' },
+      // Without the cuff pulling the head down, the humerus jams into the
+      // acromion and abduction simply stops — they're not optional here.
+      { muscle: 'infraspinatus', role: 'synergist' },
+      { muscle: 'teres_minor', role: 'synergist' },
+      { muscle: 'subscapularis', role: 'synergist' },
       { muscle: 'latissimus_dorsi', role: 'antagonist' },
       { muscle: 'pectoralis_major_clavicular', role: 'antagonist' },
       { muscle: 'teres_major', role: 'antagonist' },
@@ -111,6 +126,9 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'teres_major', role: 'synergist' },
       // Long head only — it's the part of triceps that crosses the shoulder.
       { muscle: 'triceps_brachii', role: 'synergist' },
+      // Scapular retraction gives the arm something to pull back against.
+      { muscle: 'rhomboid_major', role: 'synergist' },
+      { muscle: 'teres_minor', role: 'synergist' },
       { muscle: 'deltoid_anterior', role: 'antagonist' },
       { muscle: 'pectoralis_major_clavicular', role: 'antagonist' },
       { muscle: 'coracobrachialis', role: 'antagonist' },
@@ -126,6 +144,8 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'biceps_brachii', role: 'prime' },
       { muscle: 'brachialis', role: 'prime' },
       { muscle: 'brachioradialis', role: 'synergist' },
+      // Weak, but a genuine elbow flexor as well as a pronator.
+      { muscle: 'pronator_teres', role: 'synergist' },
       { muscle: 'triceps_brachii', role: 'antagonist' },
     ],
   },
@@ -154,6 +174,9 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'sartorius', role: 'synergist' },
       { muscle: 'tensor_fasciae_latae', role: 'synergist' },
       { muscle: 'pectineus', role: 'synergist' },
+      // The short adductors flex the hip from an extended position.
+      { muscle: 'adductor_longus', role: 'synergist' },
+      { muscle: 'adductor_brevis', role: 'synergist' },
       { muscle: 'gluteus_maximus', role: 'antagonist' },
       { muscle: 'biceps_femoris', role: 'antagonist' },
       { muscle: 'semitendinosus', role: 'antagonist' },
@@ -173,6 +196,8 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'semimembranosus', role: 'prime' },
       // The posterior ("hamstring part") fibres of adductor magnus extend the hip.
       { muscle: 'adductor_magnus', role: 'synergist' },
+      // Gluteus medius's posterior fibres extend as well as abduct.
+      { muscle: 'gluteus_medius', role: 'synergist' },
       { muscle: 'iliopsoas', role: 'antagonist' },
       { muscle: 'rectus_femoris', role: 'antagonist' },
     ],
@@ -226,6 +251,10 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'rectus_abdominis', role: 'prime' },
       { muscle: 'external_oblique', role: 'synergist' },
       { muscle: 'internal_oblique', role: 'synergist' },
+      // With the legs fixed, psoas pulls the trunk toward the thighs — this is
+      // why a sit-up is only partly an abdominal exercise.
+      { muscle: 'iliopsoas', role: 'synergist' },
+      { muscle: 'quadratus_lumborum', role: 'synergist' },
       { muscle: 'erector_spinae', role: 'antagonist' },
     ],
   },
@@ -252,10 +281,18 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'semitendinosus', role: 'prime' },
       { muscle: 'semimembranosus', role: 'prime' },
       { muscle: 'adductor_magnus', role: 'synergist' },
+      // The frontal plane. Gluteus medius/minimus are what stop the pelvis
+      // dropping and the knee caving in — the most common thing a squat
+      // actually fails on, and the app was silent about them.
+      { muscle: 'gluteus_medius', role: 'synergist' },
+      { muscle: 'gluteus_minimus', role: 'synergist' },
+      { muscle: 'adductor_longus', role: 'synergist' },
       // Trunk muscles here are anti-flexion / bracing, not movers.
       { muscle: 'erector_spinae', role: 'synergist' },
       { muscle: 'rectus_abdominis', role: 'synergist' },
       { muscle: 'external_oblique', role: 'synergist' },
+      // Dorsiflexors control how far the shin travels over the foot.
+      { muscle: 'tibialis_anterior', role: 'synergist' },
       { muscle: 'gastrocnemius', role: 'synergist' },
       { muscle: 'soleus', role: 'synergist' },
     ],
@@ -278,6 +315,8 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'biceps_femoris', role: 'prime' },
       { muscle: 'semitendinosus', role: 'prime' },
       { muscle: 'semimembranosus', role: 'prime' },
+      { muscle: 'gluteus_medius', role: 'synergist' },
+      { muscle: 'gluteus_minimus', role: 'synergist' },
       { muscle: 'erector_spinae', role: 'synergist' },
       { muscle: 'rectus_abdominis', role: 'synergist' },
       // Tibialis anterior drives the momentum-transfer phase (pulling the

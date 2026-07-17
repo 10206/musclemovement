@@ -93,6 +93,33 @@ const MUSCLE_DEFS: readonly MuscleDef[] = [
   { key: 'soleus', ko: '가자미근', en: 'Soleus', la: 'Musculus soleus', group: 'calf', sides: ['L', 'R'] },
   { key: 'tibialis_anterior', ko: '앞정강근', en: 'Tibialis anterior', la: 'Musculus tibialis anterior', group: 'calf', sides: ['L', 'R'] },
   { key: 'popliteus', ko: '오금근', en: 'Popliteus', la: 'Musculus popliteus', group: 'calf', sides: ['L', 'R'] },
+
+  // -- appended after device testing ------------------------------------
+  // These were shipped as unhighlightable scenery, which was wrong: they do
+  // real work in movements the app demonstrates, so the app was showing a
+  // movement while staying silent about muscles driving it. Appended rather
+  // than inserted — ids are baked into the GLB's vertices, so inserting would
+  // renumber everything after and silently recolour the model.
+
+  // Rotator cuff. Absent entirely, which is a strange thing for a shoulder
+  // app: these are what hold the humeral head in the socket and pull it down
+  // out of the acromion's way. Without them abduction doesn't happen at all.
+  { key: 'infraspinatus', ko: '가시아래근', en: 'Infraspinatus', la: 'Musculus infraspinatus', group: 'shoulder', sides: ['L', 'R'] },
+  { key: 'teres_minor', ko: '작은원근', en: 'Teres minor', la: 'Musculus teres minor', group: 'shoulder', sides: ['L', 'R'] },
+  { key: 'subscapularis', ko: '어깨밑근', en: 'Subscapularis', la: 'Musculus subscapularis', group: 'shoulder', sides: ['L', 'R'] },
+  // Scapular retraction — the reason the shoulder has something to pull against.
+  { key: 'rhomboid_major', ko: '큰마름근', en: 'Rhomboid major', la: 'Musculus rhomboideus major', group: 'shoulder', sides: ['L', 'R'] },
+
+  { key: 'pronator_teres', ko: '원엎침근', en: 'Pronator teres', la: 'Musculus pronator teres', group: 'forearm', sides: ['L', 'R'] },
+  { key: 'quadratus_lumborum', ko: '허리네모근', en: 'Quadratus lumborum', la: 'Musculus quadratus lumborum', group: 'trunk', sides: ['L', 'R'] },
+
+  // The frontal-plane hip. Gluteus medius is the muscle that stops the pelvis
+  // dropping on every single-leg moment of a squat — omitting it from a squat
+  // is a real gap, not a rounding error.
+  { key: 'gluteus_medius', ko: '중간볼기근', en: 'Gluteus medius', la: 'Musculus gluteus medius', group: 'thigh', sides: ['L', 'R'] },
+  { key: 'gluteus_minimus', ko: '작은볼기근', en: 'Gluteus minimus', la: 'Musculus gluteus minimus', group: 'thigh', sides: ['L', 'R'] },
+  { key: 'adductor_longus', ko: '긴모음근', en: 'Adductor longus', la: 'Musculus adductor longus', group: 'thigh', sides: ['L', 'R'] },
+  { key: 'adductor_brevis', ko: '짧은모음근', en: 'Adductor brevis', la: 'Musculus adductor brevis', group: 'thigh', sides: ['L', 'R'] },
 ] as const
 
 /**

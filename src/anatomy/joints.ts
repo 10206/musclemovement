@@ -258,7 +258,25 @@ const ROM_DEG = {
   // spec: "shoulder abduction 0-180"; adduction not specified -> clinical estimate ~30deg
   //   (from the A-pose the arm is already close to the torso, so true
   //   frontal-plane adduction past neutral is small)
-  shoulder: { flexionMax: 180, extensionMax: 60, abductionMax: 180, adductionMax: 30 },
+  // GLENOHUMERAL ONLY — this is the single most important number in the file.
+  //
+  // "Shoulder abduction 0-180" is a real clinical figure, but it is the TOTAL
+  // arc, and only about 120 of it happens at the glenohumeral joint. The rest
+  // comes from the scapula rotating upward on the ribcage, roughly 2 degrees
+  // of humerus per 1 of scapula (scapulohumeral rhythm).
+  //
+  // This rig has no scapular degree of freedom, so driving the humerus a full
+  // 180 with the shoulder blade nailed in place models a motion the body
+  // cannot perform — and that is exactly what tore latissimus dorsi off the
+  // back and stretched it 7x into a membrane between the flank and the raised
+  // arm. The muscles that would have supplied the missing 60 are already named
+  // as synergists in movements.ts (serratus anterior, trapezius); the data was
+  // right and this number was lying.
+  //
+  // Capping here is not a workaround, it's the correct glenohumeral limit. The
+  // arm reaching only ~120 instead of vertical is honest: that IS how far it
+  // goes without the shoulder blade.
+  shoulder: { flexionMax: 120, extensionMax: 60, abductionMax: 120, adductionMax: 30 },
   // spec: "hip flexion 0-120", "hip extension 0-20"; ab/adduction not
   // specified -> clinical estimates (~45 / ~30deg)
   hip: { flexionMax: 120, extensionMax: 20, abductionMax: 45, adductionMax: 30 },

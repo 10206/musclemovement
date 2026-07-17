@@ -125,6 +125,24 @@ export const MUSCLE_SOURCES = {
   vastus_medialis: { sources: ['S vastus medialis'], rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' } },
   vastus_intermedius: { sources: ['S vastus intermedius'], rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' } },
 
+  // -- promoted from context after device testing ------------------------
+  // These were rendering as scenery (id 0) while doing real work in the
+  // movements the app demonstrates. See muscles.ts.
+  infraspinatus: { sources: ['S infraspinatus muscle'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
+  teres_minor: { sources: ['S teres minor'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
+  subscapularis: { sources: ['S subscapularis'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
+  // Scapula to spine: never reaches the arm.
+  rhomboid_major: { sources: ['S rhomboid major'], rig: { rigid: 'chest' } },
+  pronator_teres: {
+    sources: ['humeral head of S pronator teres', 'ulnar head of S pronator teres'],
+    rig: { span: ['upperArm_X', 'forearm_X'], joint: 'elbow' },
+  },
+  quadratus_lumborum: { sources: ['S quadratus lumborum'], rig: { span: ['hips', 'chest'], joint: 'spine' } },
+  gluteus_medius: { sources: ['S gluteus medius'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+  gluteus_minimus: { sources: ['S gluteus minimus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+  adductor_longus: { sources: ['S adductor longus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+  adductor_brevis: { sources: ['S adductor brevis'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+
   // -- shin / calf -------------------------------------------------------
   gastrocnemius: {
     sources: ['lateral head of S gastrocnemius', 'medial head of S gastrocnemius'],
