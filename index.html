@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- viewport-fit=cover: let the canvas draw under the iPhone notch/home
+         indicator; Stage.tsx uses 100dvh + safe-area padding to compensate. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- iOS Safari has supported manifest.json since 15.4, but it ignores
+         the manifest's background_color, orientation, and shortcuts fields —
+         these Apple-specific meta tags are still required to get a
+         standalone (no browser chrome) Home Screen launch with a matching
+         status bar. See README.md / ARCHITECTURE.md §0. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- "default" here (not "black-translucent") keeps the status bar area
+         opaque white to match the app's white canvas (Stage.tsx) instead of
+         letting content draw underneath it. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="근육움직임" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+
+    <title>musclemovement</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

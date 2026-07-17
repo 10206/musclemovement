@@ -1,0 +1,32 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Asset-pipeline scratch: fetched third-party source meshes and the
+# uncompressed build artefact. Only public/models/anatomy.glb ships.
+.artifacts/
+
+# Claude Code: per-machine permission grants, not project config.
+# .claude/launch.json (the dev-server definition) IS committed.
+.claude/settings.local.json

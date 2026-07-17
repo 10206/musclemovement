@@ -1,0 +1,34 @@
+/* Full-viewport app shell: no page scroll, no rubber-banding, pure white
+   background per ARCHITECTURE.md (Stage renders on top of this). */
+
+:root,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  /* 100dvh (used in Stage) needs the visual viewport to actually resize;
+     this keeps the whole document pinned to it on iOS Safari. */
+  overscroll-behavior: none;
+}
+
+body {
+  background: #ffffff;
+  color: #08060d;
+  font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* The scene is the entire app — nothing should ever scroll behind it. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  width: 100%;
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
