@@ -43,13 +43,24 @@ import {
   type DragTarget,
 } from './ikSolver'
 
-/** Tap classification. A tap that moves more than this (CSS px) was a drag. */
-const TAP_SLOP_PX = 10
+// Double-tap thresholds. Native `dblclick` is unreliable on touch, so this is
+// detected by hand (ARCHITECTURE.md §2.3) — which means these numbers ARE the
+// feature. The first set were mouse-sized and the gesture simply didn't fire
+// on a real finger: a fingertip covers ~40px, rolls several px while pressing,
+// and a deliberate aimed tap takes longer than a click.
+
+/** A tap that travels further than this was a drag, not a tap. */
+const TAP_SLOP_PX = 14
 /** A press longer than this isn't a tap, even if it never moved. */
-const TAP_MAX_MS = 250
-/** Second tap must land within this of the first (ARCHITECTURE.md §2.3).
- * Native `dblclick` is unreliable on touch, so this is detected by hand. */
-const DOUBLE_TAP_MS = 300
+const TAP_MAX_MS = 400
+/** Gap allowed between the two taps. iOS's own double-tap window is ~300-500ms;
+ * being stricter than the platform makes the gesture feel broken. */
+const DOUBLE_TAP_MS = 450
+/** How far apart the two taps may land. Deliberately much looser than
+ * TAP_SLOP_PX: that one asks "did one finger slide", this one asks "did two
+ * separate taps mean the same spot", and fingers don't return to the same
+ * pixel. */
+const DOUBLE_TAP_SLOP_PX = 36
 
 const HANDLE_RADIUS = 0.05
 
@@ -96,8 +107,9 @@ interface TapCandidate {
   time: number
 }
 
+/** The previous tap, for double-tap detection. Deliberately does NOT record
+ * which muscle was hit — see the isDouble check. */
 interface LastTap {
-  muscleId: number
   x: number
   y: number
   time: number
@@ -287,18 +299,22 @@ export const PoseController = forwardRef<PoseControllerHandle, PoseControllerPro
 
         const now = performance.now()
         const prev = lastTap.current
+        // Position and timing decide the gesture; the muscle is then whatever
+        // the SECOND tap hit. Requiring both taps to land on the same id looks
+        // rigorous and isn't: zoomed out, a biceps is ~15px wide, so the second
+        // tap routinely catches a neighbour and the gesture silently re-arms
+        // instead of firing. "I tapped here twice" is the user's intent.
         const isDouble =
           prev !== null &&
-          prev.muscleId === muscleId &&
           now - prev.time < DOUBLE_TAP_MS &&
-          Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < TAP_SLOP_PX
+          Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < DOUBLE_TAP_SLOP_PX
 
         if (isDouble) {
           const muscle = muscleById(muscleId)
           if (muscle) onMuscleTap(muscle, first.point.clone())
           lastTap.current = null
         } else {
-          lastTap.current = { muscleId, x: e.clientX, y: e.clientY, time: now }
+          lastTap.current = { x: e.clientX, y: e.clientY, time: now }
         }
       }
 

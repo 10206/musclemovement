@@ -100,11 +100,14 @@ export const MUSCLE_SOURCES = {
   // Same story as erector spinae: iliopsoas is psoas major + iliacus.
   iliopsoas: { sources: ['S psoas major', 'S iliacus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
   gluteus_maximus: { sources: ['S gluteus maximus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
-  sartorius: { sources: ['S sartorius'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+  // Sartorius and gracilis cross hip AND knee, like rectus femoris above —
+  // and like it, the knee is where they visibly bend. Filed under the hip
+  // they stranded their distal half 0.5m from the pelvis they were following.
+  sartorius: { sources: ['S sartorius'], rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' } },
   tensor_fasciae_latae: { sources: ['S tensor fasciae latae'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
   pectineus: { sources: ['S pectineus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
   adductor_magnus: { sources: ['S adductor magnus'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
-  gracilis: { sources: ['S gracilis'], rig: { span: ['hips', 'thigh_X'], joint: 'hip' } },
+  gracilis: { sources: ['S gracilis'], rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' } },
 
   // Biarticular (hip AND knee). We span the KNEE, because that's where they
   // visibly bend; their hip end sits near the hip's rotation centre.
@@ -167,7 +170,14 @@ export const CONTEXT_GROUPS = [
   // then fly across the screen the moment an elbow bends. (build-anatomy.mjs
   // now also asserts every muscle sits near the bone it was bound to, which is
   // what caught this — names are a bad way to tell limbs apart, geometry isn't.)
-  { match: /fibularis|peroneus|tibialis posterior|(flexor|extensor) (hallucis|digitorum) longus|plantaris|calcaneal tendon/, rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' }, maxTris: 700 },
+  // Plantaris is the only one here that reaches above the knee.
+  { match: /plantaris/, rig: { span: ['thigh_X', 'shin_X'], joint: 'knee' }, maxTris: 700 },
+  // The long digital muscles have their bellies on the shin but their
+  // TENDONS run past the ankle into the toes — 0.18m off the shin axis.
+  // Spanning them at the knee left those tendons rigidly attached to the
+  // shin, so any ankle movement (every squat) tore them out of the foot.
+  // They cross the ankle, so that is the joint they span.
+  { match: /fibularis|peroneus|tibialis posterior|(flexor|extensor) (hallucis|digitorum) longus|calcaneal tendon/, rig: { span: ['shin_X', 'foot_X'], joint: 'ankle' }, maxTris: 700 },
   { match: /hallucis|(flexor|extensor) digitorum brevis|of (left|right) foot|quadratus plantae|plantar ligament/, rig: { span: ['shin_X', 'foot_X'], joint: 'ankle' }, maxTris: 250 },
 
   // Forearm: the biggest visual hole. Crosses the elbow, so it spans it.
@@ -181,8 +191,12 @@ export const CONTEXT_GROUPS = [
 
   // Neck and upper back. Rhomboids/levator scapulae/serratus posterior are
   // scapular, so they ride the chest rather than the neck.
-  { match: /rhomboid|levator scapulae|serratus posterior/, rig: { rigid: 'chest' }, maxTris: 700 },
-  { match: /sternocleidomastoid|scalene|platysma|splenius|semispinalis|omohyoid|sternohyoid|sternothyroid|thyrohyoid|longissimus capitis/, rig: { rigid: 'neck' }, maxTris: 700 },
+  // `semispinalis` spans three muscles and two body parts: capitis and
+  // cervicis are neck, thoracis is — as its name says — thoracic, running
+  // down to y=1.08 while the neck bone sits at y=1.45. Matching the bare
+  // stem filed it under the neck, 0.30m from the bone it followed.
+  { match: /rhomboid|levator scapulae|serratus posterior|semispinalis thoracis/, rig: { rigid: 'chest' }, maxTris: 700 },
+  { match: /sternocleidomastoid|scalene|platysma|splenius|semispinalis (capitis|cervicis)|omohyoid|sternohyoid|sternothyroid|thyrohyoid|longissimus capitis/, rig: { rigid: 'neck' }, maxTris: 700 },
 
   // Face. Without these the head is an empty socket above the neck.
   { match: /masseter|temporalis|pterygoid|orbicularis|zygomaticus|buccinator|risorius|mentalis|depressor|levator (labii|anguli)|nasalis|procerus|corrugator|auricular|occipitofrontalis|frontalis|occipitalis|epicranial/, rig: { rigid: 'head' }, maxTris: 500 },
@@ -222,9 +236,12 @@ export const BONE_RULES = [
   // limbs (most specific first)
   [/^(left|right) humerus$/, 'upperArm_X'],
   [/^(left|right) (radius|ulna)$/, 'forearm_X'],
-  // The thumb has no "... finger" suffix in the source ("distal phalanx of
-  // left thumb"), so the digit-name group must not require it.
-  [/(carpal|metacarpal|phalanx of (left|right) (thumb|index|middle|ring|little)( finger)?|(left|right) (scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate))/, 'hand_X'],
+  // Digits are named "... phalanx of left index finger" but "... phalanx of
+  // left thumb" — no suffix. Making " finger" optional to catch the thumb also
+  // catches "phalanx of left little TOE", which bound the toes to the wrist:
+  // measured 0.89m from the bone they followed, so bending an elbow dragged
+  // the toes up with it. Match the thumb explicitly instead.
+  [/(carpal|metacarpal|phalanx of (left|right) (index|middle|ring|little) finger|phalanx of (left|right) thumb|(left|right) (scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate))/, 'hand_X'],
   [/^(left|right) (femur|patella)$/, 'thigh_X'],
   [/^(left|right) (tibia|fibula)$/, 'shin_X'],
   [/(talus|calcaneus|navicular|cuboid|cuneiform|metatarsal|phalanx of (left|right) (big|second|third|fourth|little) toe)/, 'foot_X'],

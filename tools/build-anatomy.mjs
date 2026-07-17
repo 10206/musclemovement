@@ -193,17 +193,86 @@ function blendAxis(jb, A, B) {
   return norm(sub(pos[B], pos[A])) // leaf (foot): continue the limb's direction
 }
 
+// ---------------------------------------------------------------------------
+// Two blend rules, because "which bone does this vertex follow?" is a
+// different question depending on how the two bones sit in space.
+// ---------------------------------------------------------------------------
+//
+// ALONG (elbow, knee, wrist, ankle): the two bones are collinear segments of
+//   one limb, so "how far past the joint is this vertex, measured down the
+//   limb" is unambiguous and exactly right. Distance can't answer it — the
+//   brachialis belly sits only ~5cm from the forearm bone but belongs to the
+//   humerus.
+//
+// NEAR (shoulder, hip, spine): the proximal bone is in the torso and the
+//   distal one is a limb, pointing off in another direction entirely. The
+//   ALONG rule breaks badly here, because a muscle anchored on the torso runs
+//   down the TORSO, not down the limb — every vertex of latissimus dorsi, all
+//   the way to the lumbar spine, is "below the shoulder" and so read as
+//   distal. Measured: 100% of the lat was bound rigidly to the humerus, 898 of
+//   its vertices more than 15cm from the bone they followed, so raising the
+//   arm peeled the whole sheet off the back and swung it round to the front.
+//   What actually decides it is proximity to the limb: only the tendon reaches
+//   the humerus, and the belly never does.
+const TORSO_BONES = new Set(['hips', 'spine', 'chest', 'neck', 'shoulder_L', 'shoulder_R'])
+
+/** How near a limb bone a vertex must be to follow it fully, and how far to
+ * ignore it entirely. Between the two it blends, which is what lets pec major
+ * stretch from a fixed sternum to a moving humerus. */
+const NEAR_FULL = 0.025
+const NEAR_NONE = 0.1
+
+/** The line segment a bone physically occupies. */
+function boneSegment(name) {
+  const child = CHILD_OF[name]
+  if (child) return [pos[name], pos[child]]
+  // Leaf bones have no child to point at, so give them an anatomical one —
+  // otherwise they collapse to a point and every distance to them is measured
+  // from the joint, not from the body part.
+  const dir = LEAF_TAIL[name]
+  if (!dir) return [pos[name], pos[name]]
+  return [pos[name], [pos[name][0] + dir[0], pos[name][1] + dir[1], pos[name][2] + dir[2]]]
+}
+
+const LEAF_TAIL = {}
+for (const X of ['L', 'R']) {
+  // The hand continues the forearm's line.
+  const d = norm(sub(pos[`hand_${X}`], pos[`forearm_${X}`]))
+  LEAF_TAIL[`hand_${X}`] = [d[0] * 0.09, d[1] * 0.09, d[2] * 0.09]
+  // The foot points anterior (+Z), NOT down the shin.
+  LEAF_TAIL[`foot_${X}`] = [0, 0, 0.12]
+}
+LEAF_TAIL.head = [0, 0.15, 0]
+
+function segmentPointDistance(p, [a, b]) {
+  const ab = sub(b, a)
+  const len2 = dot(ab, ab)
+  if (len2 < 1e-9) return dist(p, a)
+  const t = Math.max(0, Math.min(1, dot(sub(p, a), ab) / len2))
+  return dist(p, [a[0] + ab[0] * t, a[1] + ab[1] * t, a[2] + ab[2] * t])
+}
+
 /** Weights for one vertex under a rig rule. Returns [[boneName, weight], ...]. */
 function weightsFor(rule, X, v) {
   if (rule.rigid) return [[expandSide(rule.rigid, X), 1]]
   const A = expandSide(rule.span[0], X)
   const B = expandSide(rule.span[1], X)
-  const jb = jointBone(rule.joint, X)
-  const axis = blendAxis(jb, A, B)
-  const t = dot(sub(v, pos[jb]), axis)
-  const wB = smoothstep(-JOINT_BLEND, JOINT_BLEND, t)
-  if (wB <= 0) return [[A, 1]]
-  if (wB >= 1) return [[B, 1]]
+
+  let wB
+  // NEAR only for torso -> LIMB. A torso-to-torso span (the abdominals, the
+  // erector spinae) is collinear up the trunk, so it wants ALONG just like a
+  // limb does — NEAR would strand the lumbar end 0.3m from the bone it follows.
+  if (TORSO_BONES.has(A) && !TORSO_BONES.has(B)) {
+    // NEAR: follow the limb only as far as you actually reach it.
+    wB = 1 - smoothstep(NEAR_FULL, NEAR_NONE, segmentPointDistance(v, boneSegment(B)))
+  } else {
+    // ALONG: follow the distal bone once you're past the joint.
+    const jb = jointBone(rule.joint, X)
+    wB = smoothstep(-JOINT_BLEND, JOINT_BLEND, dot(sub(v, pos[jb]), blendAxis(jb, A, B)))
+  }
+
+  if (wB <= 0.001) return [[A, 1]]
+  if (wB >= 0.999) return [[B, 1]]
   return [[A, 1 - wB], [B, wB]]
 }
 

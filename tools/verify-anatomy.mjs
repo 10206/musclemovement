@@ -147,6 +147,103 @@ console.log('\n=== skinning is identity at bind pose')
   }
 }
 
+console.log('\n=== no vertex rigidly follows a bone it is nowhere near')
+// The check that would have caught the latissimus dorsi bug and didn't.
+//
+// build-anatomy.mjs asserts this per-MUSCLE using each mesh's centroid, which
+// is far too coarse: the lat's centroid sits within tolerance of the humerus
+// even when all 2006 of its vertices are rigidly bound to it, so the whole
+// sheet peeled off the back on abduction while every check stayed green.
+//
+// Skinning is per-vertex, so the check has to be too: if a vertex is ~fully
+// weighted to a bone, it must be near enough to that bone that rotating it is
+// physically sensible. Anything else IS a mis-scoped rig rule.
+{
+  const jointNodes = skins[0].listJoints()
+  const parentOf = new Map()
+  for (const j of jointNodes) for (const c of j.listChildren()) parentOf.set(c, j)
+  const worldOf = (node) => {
+    let p = [0, 0, 0]
+    for (let n = node; n; n = parentOf.get(n)) {
+      const t = n.getTranslation()
+      p = [p[0] + t[0], p[1] + t[1], p[2] + t[2]]
+    }
+    return p
+  }
+  const world = jointNodes.map(worldOf)
+  const childIdx = jointNodes.map((j) => {
+    const c = j.listChildren()[0]
+    return c ? jointNodes.indexOf(c) : -1
+  })
+
+  const segDist = (p, a, b) => {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
+    const l2 = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2
+    const t = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / l2)) : 0
+    return Math.hypot(p[0] - (a[0] + ab[0] * t), p[1] - (a[1] + ab[1] * t), p[2] - (a[2] + ab[2] * t))
+  }
+  // How far may a muscle vertex sit from the bone it rigidly follows?
+  //
+  // A fixed number can't answer that: the ribcage is genuinely 0.22m from the
+  // thoracic axis, while a humerus is a stick. So ask the skeleton — measure
+  // how far the BONE LAYER's own geometry reaches from each bone, and allow
+  // muscles a margin on top. A muscle wrapping its own body part passes; one
+  // bound to a bone in a different limb doesn't, because no skeleton reaches
+  // there either. The yardstick comes from the same file being checked.
+  const MARGIN = 0.12
+
+  const reachOf = (mesh) => {
+    const p = mesh.listPrimitives()[0]
+    const pos = p.getAttribute('POSITION').getArray()
+    const jv = p.getAttribute('JOINTS_0').getArray()
+    const wv = p.getAttribute('WEIGHTS_0').getArray()
+    const out = new Map()
+    for (let v = 0; v < pos.length / 3; v++) {
+      for (let k = 0; k < 4; k++) {
+        if (wv[v * 4 + k] < 0.9) continue
+        const b = jv[v * 4 + k]
+        const tail = childIdx[b] >= 0 ? world[childIdx[b]] : world[b]
+        const d = segDist([pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]], world[b], tail)
+        if (d > (out.get(b) ?? 0)) out.set(b, d)
+      }
+    }
+    return out
+  }
+  const boneReach = reachOf(meshes.find((m) => m.getName() === 'boneMesh'))
+
+  const prim = muscleMesh.listPrimitives()[0]
+  const pos = prim.getAttribute('POSITION').getArray()
+  const jv = prim.getAttribute('JOINTS_0').getArray()
+  const wv = prim.getAttribute('WEIGHTS_0').getArray()
+  const ids = prim.getAttribute('_AMUSCLEID').getArray()
+
+  const worstByMuscle = new Map()
+  for (let v = 0; v < pos.length / 3; v++) {
+    const p = [pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]]
+    for (let k = 0; k < 4; k++) {
+      if (wv[v * 4 + k] < 0.9) continue // only near-rigid bindings
+      const b = jv[v * 4 + k]
+      const tail = childIdx[b] >= 0 ? world[childIdx[b]] : world[b]
+      const over = segDist(p, world[b], tail) - ((boneReach.get(b) ?? 0) + MARGIN)
+      const id = ids[v]
+      if (over > (worstByMuscle.get(id)?.over ?? -Infinity)) {
+        worstByMuscle.set(id, { over, bone: jointNodes[b].getName(), d: segDist(p, world[b], tail) })
+      }
+    }
+  }
+
+  const offenders = [...worstByMuscle.entries()]
+    .filter(([, w]) => w.over > 0)
+    .sort((a, b) => b[1].over - a[1].over)
+    .map(([id, w]) => {
+      const name = MUSCLES.find((m) => m.id === id)?.key ?? (id === 0 ? 'context muscle' : `id ${id}`)
+      return `${name} -> ${w.bone}: ${w.d.toFixed(2)}m, but the skeleton only reaches ${(boneReach.get(jointNodes.findIndex((j) => j.getName() === w.bone)) ?? 0).toFixed(2)}m there`
+    })
+
+  check(offenders.length === 0, `no muscle vertex reaches further from its bone than the skeleton does (+${MARGIN}m)`,
+    offenders.length ? `\n      ${offenders.slice(0, 6).join('\n      ')}` : '')
+}
+
 console.log('\n=== geometry')
 const pos = prim.getAttribute('POSITION')
 const min = pos.getMinNormalized([]), max = pos.getMaxNormalized([])

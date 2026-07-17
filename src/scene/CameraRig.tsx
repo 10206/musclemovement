@@ -8,7 +8,10 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
  * inside a shader-updating useFrame, not a reactive value. */
 export type CameraDistanceRef = { current: number }
 
-const DEFAULT_DISTANCE = 2.6
+/** Seed value only — overwritten from the real camera on the first frame.
+ * Matches Stage's initial camera so the zoom-threshold rule doesn't briefly
+ * think we're zoomed in before that frame runs. */
+const DEFAULT_DISTANCE = 3.9
 
 const CameraDistanceContext = createContext<CameraDistanceRef | null>(null)
 
@@ -31,10 +34,14 @@ export function useCameraDistance(): CameraDistanceRef {
 }
 
 /**
- * Orbit camera constrained per ARCHITECTURE.md §0:
- * - 180° total horizontal orbit (±90° from the front) — the figure never
- *   needs to be viewed from directly behind, and a hard stop avoids the
- *   user losing their sense of "front" when spinning a symmetric body.
+ * Orbit camera.
+ *
+ * - Horizontal orbit is UNLIMITED. It was originally clamped to ±90° from the
+ *   front, on the reasoning that "the figure never needs to be viewed from
+ *   directly behind". That was simply wrong: latissimus dorsi, trapezius,
+ *   gluteus maximus and the hamstrings are all posterior, and shoulder
+ *   extension / hip extension / knee flexion are only legible from behind. An
+ *   anatomy reference you can't walk around is half an anatomy reference.
  * - 120° total vertical orbit, centered on the horizon (30°..150° polar) —
  *   keeps the camera from flipping over the head or diving under the feet.
  * - Panning disabled (the figure is always centered); pinch-zoom still
@@ -62,13 +69,14 @@ export function CameraRig() {
       enableZoom
       enableDamping
       dampingFactor={0.1}
-      minAzimuthAngle={-Math.PI / 2}
-      maxAzimuthAngle={Math.PI / 2}
+      // No azimuth clamp: the back half of the body is where half the muscles
+      // are. Vertical stays clamped — flipping over the head is disorienting
+      // and there is nothing to see from directly underfoot.
       minPolarAngle={Math.PI / 6}
       maxPolarAngle={Math.PI / 6 + (2 * Math.PI) / 3}
-      // Sized for a ~1.8m figure centered at y=0.95: close enough to fill
+      // Sized for the 1.67m figure targeted at y=0.75: close enough to fill
       // the screen with a single muscle, far enough to frame head-to-feet
-      // with margin (matches Stage's default camera distance of ~3.5).
+      // with margin (Stage's default camera sits at 3.9).
       minDistance={0.5}
       maxDistance={5.5}
     />
