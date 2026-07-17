@@ -135,10 +135,19 @@ const deg = (d: number): number => (d * Math.PI) / 180
  * (e.g. 'elbow' bends by rotating `forearm_L`, not `upperArm_L`). */
 export function jointBone(joint: JointName, side: Side): BoneName {
   switch (joint) {
+    // The shoulder girdle. Its bone sits at the sternoclavicular joint — the
+    // real pivot the clavicle+scapula unit swings on — and the whole arm hangs
+    // below it, so rotating it carries the arm with it.
+    case 'scapula':
+      return `shoulder_${assertLR(joint, side)}` as BoneName
     case 'shoulder':
       return `upperArm_${assertLR(joint, side)}` as BoneName
     case 'elbow':
       return `forearm_${assertLR(joint, side)}` as BoneName
+    // Not animated — see JointName. The asset pipeline blends the hand muscles
+    // across it, which needs the bone even though nothing rotates it.
+    case 'wrist':
+      return `hand_${assertLR(joint, side)}` as BoneName
     case 'hip':
       return `thigh_${assertLR(joint, side)}` as BoneName
     case 'knee':
@@ -186,6 +195,15 @@ function setMirrored(joint: JointName, action: JointAction, axis: Axis, signL: 1
   setAxis(joint, action, 'L', axis, signL)
   setAxis(joint, action, 'R', axis, signL === 1 ? -1 : 1)
 }
+
+// -- scapula (shoulder girdle) --
+// Measured: rotating shoulder_L by +20deg about z lifts upperArm_L by 5.3cm;
+// shoulder_R by +20deg drops it 5.5cm. Mirrored, like every coronal-plane
+// action. The x axis moves it almost nothing (1.7cm) because upperArm sits
+// nearly ON the x axis from the sternoclavicular joint — so z is the girdle's
+// only useful degree of freedom, and elevation and upward rotation share it.
+setMirrored('scapula', 'elevation', 'z', 1) // L: +z lifts, R: -z lifts
+setMirrored('scapula', 'depression', 'z', -1)
 
 // -- shoulder --
 setUnmirrored('shoulder', 'flexion', 'x', -1)
@@ -258,6 +276,10 @@ const ROM_DEG = {
   // spec: "shoulder abduction 0-180"; adduction not specified -> clinical estimate ~30deg
   //   (from the A-pose the arm is already close to the torso, so true
   //   frontal-plane adduction past neutral is small)
+  // Scapular elevation: a shrug lifts the shoulder ~7cm, and the measured
+  // 5.3cm per 20deg puts that at ~30deg. Depression is much smaller — the
+  // shoulder doesn't drop far below resting.
+  scapula: { elevationMax: 30, depressionMax: 10 },
   // GLENOHUMERAL ONLY — this is the single most important number in the file.
   //
   // "Shoulder abduction 0-180" is a real clinical figure, but it is the TOTAL
@@ -298,6 +320,16 @@ function setRom(joint: JointName, side: Side, axis: Axis, min: number, max: numb
 }
 
 for (const side of ['L', 'R'] as const) {
+  // scapula: z = elevation/depression (mirrored)
+  const scapUp = jointActionAxis('scapula', 'elevation', side)
+  setRom(
+    'scapula',
+    side,
+    'z',
+    scapUp.sign === 1 ? -deg(ROM_DEG.scapula.depressionMax) : -deg(ROM_DEG.scapula.elevationMax),
+    scapUp.sign === 1 ? deg(ROM_DEG.scapula.elevationMax) : deg(ROM_DEG.scapula.depressionMax),
+  )
+
   // shoulder: x = flex(-)/ext(+), z = abduct/adduct (mirrored)
   setRom('shoulder', side, 'x', -deg(ROM_DEG.shoulder.flexionMax), deg(ROM_DEG.shoulder.extensionMax))
   const shoulderAbd = jointActionAxis('shoulder', 'abduction', side)

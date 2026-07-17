@@ -22,6 +22,7 @@ import { MeshoptSimplifier } from 'meshoptimizer'
 import { extractMeshes, readGlb, writeGlb } from './lib/glb.mjs'
 import { BONE_EXCLUDE, BONE_RULES, BONE_SIMPLIFY, CONTEXT_GROUPS, JOINT_BLEND, MUSCLE_SOURCES, expandSide } from './anatomy-map.mjs'
 import { MUSCLES } from '../src/anatomy/muscles.ts'
+import { jointBone } from '../src/anatomy/joints.ts'
 
 await MeshoptSimplifier.ready
 
@@ -171,11 +172,11 @@ for (const [a, b, lo, hi] of [
 // 3. Skinning
 // ---------------------------------------------------------------------------
 
-/** Bone whose ORIGIN is the given anatomical joint — the same contract
- * src/anatomy/joints.ts uses (a joint is actuated by rotating its distal bone,
- * and our bones sit at their joint). */
-const jointBone = (joint, X) =>
-  ({ shoulder: `upperArm_${X}`, elbow: `forearm_${X}`, wrist: `hand_${X}`, hip: `thigh_${X}`, knee: `shin_${X}`, ankle: `foot_${X}`, spine: 'spine' })[joint]
+// `jointBone` comes from src/anatomy/joints.ts rather than being restated
+// here. It used to be a copy, which is how adding the `scapula` joint broke
+// this build: joints.ts knew about it and the copy didn't. joints.ts is the
+// single source of truth for which bone a joint actuates, and the pipeline
+// must read the same table the app does.
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 const norm = (v) => { const l = Math.hypot(...v) || 1; return [v[0] / l, v[1] / l, v[2] / l] }
@@ -214,7 +215,12 @@ function blendAxis(jb, A, B) {
 //   arm peeled the whole sheet off the back and swung it round to the front.
 //   What actually decides it is proximity to the limb: only the tendon reaches
 //   the humerus, and the belly never does.
-const TORSO_BONES = new Set(['hips', 'spine', 'chest', 'neck', 'shoulder_L', 'shoulder_R'])
+// The girdle bones are deliberately NOT here. They're an anchor a muscle can
+// be pulled *toward*, exactly like a limb: trapezius runs down the BACK and
+// only its acromial end reaches the girdle, so it wants the same body-location
+// test the lat gets. Counting them as torso gave them the collinear ALONG rule
+// and fanned the trapezius out between the neck and the shoulder.
+const TORSO_BONES = new Set(['hips', 'spine', 'chest', 'neck'])
 
 // ---------------------------------------------------------------------------
 // Why torso->limb muscles get a PIVOT rule and not a proximity blend

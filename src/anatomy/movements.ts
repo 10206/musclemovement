@@ -18,11 +18,22 @@
 
 import { MUSCLES, type Muscle, type MuscleSide } from './muscles'
 
-/** Anatomical joints we model. Mapped to concrete bones by joints.ts. */
-export type JointName = 'shoulder' | 'elbow' | 'hip' | 'knee' | 'ankle' | 'spine'
+/**
+ * Anatomical joints we model. Mapped to concrete bones by joints.ts.
+ *
+ * `scapula` is the shoulder girdle — the clavicle+scapula unit pivoting on the
+ * sternoclavicular joint. It is what makes the arm reach past 120deg: the
+ * glenohumeral joint alone cannot (see joints.ts), so without this the arm
+ * simply stopped short of vertical.
+ */
+export type JointName = 'scapula' | 'shoulder' | 'elbow' | 'wrist' | 'hip' | 'knee' | 'ankle' | 'spine'
+// `wrist` is here because it exists and the hand muscles blend across it,
+// not because the app animates it — no movement names a wrist action and
+// joints.ts gives it no ROM, so it has no degrees of freedom.
 
-/** Direction of travel at a joint, in standard anatomical terms. */
-export type JointAction = 'flexion' | 'extension' | 'abduction' | 'adduction'
+/** Direction of travel at a joint, in standard anatomical terms.
+ * `elevation`/`depression` are the girdle's — a shrug and its opposite. */
+export type JointAction = 'flexion' | 'extension' | 'abduction' | 'adduction' | 'elevation' | 'depression'
 
 /** A joint moving in a direction. joints.ts resolves this to (bone, axis, sign). */
 export type JointMotion = { joint: JointName; action: JointAction }
@@ -132,6 +143,24 @@ export const MOVEMENTS: readonly MovementDef[] = [
       { muscle: 'deltoid_anterior', role: 'antagonist' },
       { muscle: 'pectoralis_major_clavicular', role: 'antagonist' },
       { muscle: 'coracobrachialis', role: 'antagonist' },
+    ],
+  },
+  {
+    key: 'shoulder_shrug',
+    ko: '어깨 으쓱 (올리기)',
+    en: 'Shoulder shrug (scapular elevation)',
+    laterality: 'bilateral',
+    motions: [{ joint: 'scapula', action: 'elevation' }],
+    muscles: [
+      // The upper trapezius IS the shrug. Our registry models trapezius as one
+      // muscle rather than its three parts, so the whole sheet lights up —
+      // slightly generous, since its lower fibres actually oppose this.
+      { muscle: 'trapezius', role: 'prime' },
+      { muscle: 'levator_scapulae', role: 'prime' },
+      { muscle: 'rhomboid_major', role: 'synergist' },
+      // Gravity does the lowering; these are what resist it.
+      { muscle: 'latissimus_dorsi', role: 'antagonist' },
+      { muscle: 'pectoralis_major_clavicular', role: 'antagonist' },
     ],
   },
   {

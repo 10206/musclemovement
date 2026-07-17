@@ -41,13 +41,14 @@ for (const j of joints) {
 const names = joints.map((j) => j.getName())
 
 const CHILD = {
+  scapula: 'upperArm', // rotating shoulder_X (the girdle), watch upperArm_X
   shoulder: 'forearm', // rotating upperArm_X, watch forearm_X
   elbow: 'hand',
   hip: 'shin',
   knee: 'foot',
   spine: 'chest',
 }
-const DRIVER = { shoulder: 'upperArm', elbow: 'forearm', hip: 'thigh', knee: 'shin', spine: 'spine' }
+const DRIVER = { scapula: 'shoulder', shoulder: 'upperArm', elbow: 'forearm', hip: 'thigh', knee: 'shin', spine: 'spine' }
 
 function worldOf(name, rot) {
   // Walk root -> name accumulating translation + the one test rotation.
@@ -104,7 +105,7 @@ const describe = (d, side) => {
 console.log('\nRig bind pose is translation-only, so local axes == world axes at rest.')
 console.log('App space: +X = figure\'s LEFT, +Y = up, +Z = anterior.\n')
 
-for (const joint of ['shoulder', 'elbow', 'hip', 'knee', 'spine']) {
+for (const joint of ['scapula', 'shoulder', 'elbow', 'hip', 'knee', 'spine']) {
   for (const side of joint === 'spine' ? ['C'] : ['L', 'R']) {
     const driver = joint === 'spine' ? 'spine' : `${DRIVER[joint]}_${side}`
     const child = joint === 'spine' ? 'chest' : `${CHILD[joint]}_${side}`

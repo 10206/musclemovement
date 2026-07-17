@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type RefObject } from 'react'
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type * as THREE from 'three'
 import { Stage } from './scene/Stage'
@@ -6,6 +6,7 @@ import { CameraRig, CameraDistanceProvider } from './scene/CameraRig'
 import { Figure, type FigureHandle, type FigureMode } from './scene/Figure'
 import type { AnatomyModel } from './scene/useAnatomyModel'
 import { PoseController, type PoseControllerHandle } from './interaction/PoseController'
+import { createShoulderRhythm } from './interaction/shoulderRhythm'
 import { useClips, type ClipsApi } from './playback/useClips'
 import { Scrubber } from './playback/Scrubber'
 import { AttributionButton } from './ui/AttributionButton'
@@ -18,22 +19,25 @@ import type { Muscle } from './anatomy/muscles'
 /**
  * The app's one and only per-frame driver.
  *
- * Both the AnimationMixer (clips) and the IK solver (pose dragging) write bone
- * quaternions, and whoever writes last wins. If each subscribed to its own
- * `useFrame`, the order would fall out of component mount order — an
+ * The mixer (clips), the IK solver (pose dragging) and the shoulder rhythm all
+ * write bone rotations, and whoever writes last wins. If each subscribed to its
+ * own `useFrame`, the order would fall out of component mount order — an
  * implementation detail — and the figure would flicker the moment the tree
  * changed shape. See the frame-order contract atop playback/useClips.ts.
  */
 function FrameDriver({
   clips,
   poseRef,
+  rhythm,
 }: {
   clips: ClipsApi
   poseRef: RefObject<PoseControllerHandle | null>
+  rhythm: (() => void) | null
 }) {
   useFrame((_, delta) => {
     clips.tick(delta) // 1. mixer first
     poseRef.current?.update() // 2. IK second — overrides the mixer on dragged bones
+    rhythm?.() // 3. girdle last: it reads the humerus the other two just set
   })
   return null
 }
@@ -57,6 +61,10 @@ export default function App() {
   // the mixer at muscleMesh finds no bones, binds nothing, and plays every
   // clip silently — no error, no warning, just a figure that never moves.
   const clips = useClips(mannequin?.scene ?? null)
+
+  // The girdle constraint that lets the arm reach past 120deg. Built from the
+  // bind pose, so it's memoised against the model rather than rebuilt per frame.
+  const rhythm = useMemo(() => (mannequin ? createShoulderRhythm(mannequin) : null), [mannequin])
 
   const handleActivations = useCallback((activations: readonly ResolvedActivation[] | null) => {
     if (activations) figureRef.current?.setActivations(activations)
@@ -109,7 +117,7 @@ export default function App() {
             position={label?.position ?? null}
             onDismiss={() => setLabel(null)}
           />
-          <FrameDriver clips={clips} poseRef={poseRef} />
+          <FrameDriver clips={clips} poseRef={poseRef} rhythm={rhythm} />
         </CameraDistanceProvider>
       </Stage>
 

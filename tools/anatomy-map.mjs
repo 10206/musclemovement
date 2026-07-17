@@ -54,7 +54,7 @@ export const MUSCLE_SOURCES = {
   serratus_anterior: { sources: ['S serratus anterior'], rig: { rigid: 'chest' } },
   trapezius: {
     sources: ['ascending part of S trapezius', 'descending part of S trapezius', 'transverse part of S trapezius'],
-    rig: { rigid: 'chest' },
+    rig: { span: ['chest', 'shoulder_X'], joint: 'scapula' },
   },
   latissimus_dorsi: { sources: ['S latissimus dorsi'], rig: { span: ['spine', 'upperArm_X'], joint: 'shoulder' } },
   teres_major: { sources: ['S teres major'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
@@ -132,7 +132,11 @@ export const MUSCLE_SOURCES = {
   teres_minor: { sources: ['S teres minor'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
   subscapularis: { sources: ['S subscapularis'], rig: { span: ['chest', 'upperArm_X'], joint: 'shoulder' } },
   // Scapula to spine: never reaches the arm.
-  rhomboid_major: { sources: ['S rhomboid major'], rig: { rigid: 'chest' } },
+  // Girdle muscles: they run from the spine to the scapula, so they must
+  // span the girdle bone — otherwise a shrug lifts the shoulder while the
+  // trapezius covering it stays nailed to the ribcage.
+  rhomboid_major: { sources: ['S rhomboid major'], rig: { span: ['chest', 'shoulder_X'], joint: 'scapula' } },
+  levator_scapulae: { sources: ['S levator scapulae'], rig: { span: ['chest', 'shoulder_X'], joint: 'scapula' } },
   pronator_teres: {
     sources: ['humeral head of S pronator teres', 'ulnar head of S pronator teres'],
     rig: { span: ['upperArm_X', 'forearm_X'], joint: 'elbow' },

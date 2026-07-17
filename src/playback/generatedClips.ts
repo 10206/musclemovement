@@ -280,8 +280,42 @@ function buildLegCompoundClip(movement: MovementDef, opts: LegCompoundOptions): 
 // Assembly
 // ---------------------------------------------------------------------------
 
+/**
+ * A shrug lifts the shoulders and leaves the arms hanging.
+ *
+ * That needs saying because it isn't what rotating the girdle does on its own:
+ * the arm is the girdle's child, so elevating the girdle carries the whole arm
+ * up and out with it, and the figure ends up shaped like a scarecrow instead of
+ * someone shrugging. A real shoulder joint absorbs that rotation — you shrug and
+ * your arms stay by your sides — so the clip counter-rotates the humerus by
+ * exactly what the girdle gained.
+ *
+ * Bilateral by hand: buildSingleMotionClip drives one DEFAULT_SIDE, and a
+ * one-shouldered shrug is not a shrug.
+ */
+function buildShrugClip(movement: MovementDef): THREE.AnimationClip {
+  const times = sampleTimes(CLIP_DURATION, SAMPLE_COUNT)
+  const phases = times.map((t) => phaseAt(t / CLIP_DURATION))
+  const tracks: THREE.KeyframeTrack[] = []
+
+  for (const side of ['L', 'R'] as const) {
+    const { axis, sign } = jointActionAxis('scapula', 'elevation', side)
+    const rom = jointRom('scapula', side, axis)
+    if (!rom) throw new Error(`generatedClips: no ROM for scapula/${axis}`)
+    const lift = sign === 1 ? rom.max : rom.min
+
+    tracks.push(buildQuaternionTrack({ bone: jointBone('scapula', side), axis, target: lift }, times, phases))
+    // The arm gives back what the girdle took. Same axis, opposite sign, so
+    // the humerus ends up hanging exactly where it started.
+    tracks.push(buildQuaternionTrack({ bone: jointBone('shoulder', side), axis, target: -lift }, times, phases))
+  }
+  return new THREE.AnimationClip(movement.key, CLIP_DURATION, tracks)
+}
+
 function buildClipForMovement(movement: MovementDef): THREE.AnimationClip {
   switch (movement.key) {
+    case 'shoulder_shrug':
+      return buildShrugClip(movement)
     case 'squat':
       // Deep-ish squat: full ankle dorsiflexion (its ROM is tiny anyway),
       // hip/knee to 85% of ROM (a hard "ATG" squat sits right at the ROM

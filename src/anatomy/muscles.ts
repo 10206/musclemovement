@@ -109,6 +109,8 @@ const MUSCLE_DEFS: readonly MuscleDef[] = [
   { key: 'subscapularis', ko: '어깨밑근', en: 'Subscapularis', la: 'Musculus subscapularis', group: 'shoulder', sides: ['L', 'R'] },
   // Scapular retraction — the reason the shoulder has something to pull against.
   { key: 'rhomboid_major', ko: '큰마름근', en: 'Rhomboid major', la: 'Musculus rhomboideus major', group: 'shoulder', sides: ['L', 'R'] },
+  // The other half of a shrug — trapezius gets the credit, this does the work.
+  { key: 'levator_scapulae', ko: '어깨올림근', en: 'Levator scapulae', la: 'Musculus levator scapulae', group: 'shoulder', sides: ['L', 'R'] },
 
   { key: 'pronator_teres', ko: '원엎침근', en: 'Pronator teres', la: 'Musculus pronator teres', group: 'forearm', sides: ['L', 'R'] },
   { key: 'quadratus_lumborum', ko: '허리네모근', en: 'Quadratus lumborum', la: 'Musculus quadratus lumborum', group: 'trunk', sides: ['L', 'R'] },
